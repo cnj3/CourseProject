@@ -1,11 +1,10 @@
 import datetime
-import numpy as np
 
 
 # Read in IEMPrices.txt and return a dictionary of date object keys and the iem normalized price values
-def get_iem_prices():
+def get_iem_prices(iem_path):
     iem_prices = dict()
-    with open('data/IEMPrices.txt') as iem_txt:
+    with open(iem_path) as iem_txt:
         lines = iem_txt.readlines()
         for line in lines:
             line = line.strip()
@@ -40,7 +39,7 @@ class DocumentCorpus(object):
         self.document_count = len(self.documents)
 
     def read_data_file(self):
-        with open('data/articles.txt') as iem_txt:
+        with open('data/edited_articles.txt') as iem_txt:
             lines = iem_txt.readlines()
             for line in lines:
                 line = line.strip()
@@ -50,8 +49,9 @@ class DocumentCorpus(object):
                     document_str = split_line[1]
                     document_date = datetime.datetime.strptime(date_str, "%Y %m %d").date()
                     document = document_str.split(' ')
+                    clean_document = [word for word in document if word != '']
+                    self.documents.append(clean_document)
                     self.document_dates.append(document_date)
-                    self.documents.append(document)
 
     def build_vocabulary(self):
         vocabulary_set = set()
@@ -59,7 +59,3 @@ class DocumentCorpus(object):
             unique_words_in_document = set(document)
             vocabulary_set = vocabulary_set.union(unique_words_in_document)
         self.vocabulary = list(vocabulary_set)
-
-
-if __name__ == '__main__':
-    print(get_iem_prices())
