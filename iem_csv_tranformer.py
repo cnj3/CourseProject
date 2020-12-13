@@ -3,6 +3,7 @@
 
 import csv
 
+
 def main():
     all_dates = get_all_dates()
     normalized_prices = get_normalized_prices(all_dates)
