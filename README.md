@@ -33,7 +33,7 @@ To program our software, we used Python. We used Python because of its simplicit
 
 **How to Run**
 
-To run the code, clone the repository and open it in your terminal. Then, run `python iem_csv_transformer.py` and `python article_compiler.py` to scrape the IEM data and New York Times data. This only needs to be done the first time. After this, install all of the needed packages and run `python main.py`.
+To run the code, clone the repository and open it in your terminal. After this, install all of the needed packages and run `python main.py`.
 
 ```sh
 $ pip install numpy
@@ -43,7 +43,6 @@ $ pip install gensim
 $ pip install statsmodels
 $ pip install scipy
 $ python iem_csv_transformer.py
-$ python article_compiler.py
 $ python main.py
 ```
 
