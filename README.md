@@ -65,5 +65,5 @@ Worked with Chaitanya to scrape the New York Times data. (Ghosted us for the res
 
 ### **Presentation**
 
-The presentation is an uploaded file in this repo.
+You can view the final presentation using this YouTube link: 
 
