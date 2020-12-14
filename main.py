@@ -179,7 +179,7 @@ def determine_new_priors(positive_words, negative_words, nyt_data):
 
 # prints out the topics
 # iterates through the list of topics and gets the topic terms
-# then iterates through those and prints the most significant words based on the topic
+# then iterates through those and prints the top words based on the topic
 def print_topics(topics, lda_model, nyt_data):
     for topic in topics:
         words = []
