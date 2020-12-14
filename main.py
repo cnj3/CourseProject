@@ -13,7 +13,7 @@ def main():
 
     print('Running ICTM...\n')
     run_ictm(nyt_data, iem_prices, 10)
-    print('ICTM finished in')
+    print('ICTM Finished')
 
 
 def read_data():
@@ -25,32 +25,39 @@ def read_data():
 
 
 def run_ictm(nyt_data, iem_prices, number_of_topics):
-
     prior = 0
 
-    print('Creating LDA Model...')
-    lda_model = gensim.models.LdaModel(nyt_data.corpus,
-                                       id2word=nyt_data.document_dct,
-                                       alpha='auto',
-                                       eta=prior,
-                                       num_topics=number_of_topics,
-                                       passes=5)
-    topics = lda_model.get_topics()  # Size number_of_topics by doc_count
-    print('LDA Model Created\n')
+    for iteration_count in range(5):
+        print('\n*********************************************\n')
+        print('Starting Iteration #: ' + str(iteration_count + 1) + '\n')
 
-    print('Determining Significant Topics...')
-    total_topic_probs_by_date = get_topic_total_probability_by_date(nyt_data, lda_model, number_of_topics)
-    significant_topics = find_significant_topics(total_topic_probs_by_date, iem_prices, number_of_topics, nyt_data)
-    print_topics(significant_topics, lda_model, nyt_data)
-    print('Significant Topics Determined\n')
+        print('Creating LDA Model...')
+        lda_model = gensim.models.LdaModel(nyt_data.corpus,
+                                           id2word=nyt_data.document_dct,
+                                           alpha='auto',
+                                           eta=prior,
+                                           num_topics=number_of_topics,
+                                           passes=5)
+        # topics = lda_model.get_topics()  # Size number_of_topics by doc_count
+        print('LDA Model Created\n')
 
-    print('Determining Significant Words....')
-    positive_words, negative_words = get_pos_neg_words(iem_prices, nyt_data, significant_topics, lda_model)
-    print('Best Gore words: ')
-    print_words(positive_words, nyt_data)
-    print('Best Bush words: ')
-    print_words(negative_words, nyt_data)
-    print('Significant Words Determined\n')
+        print('Determining Significant Topics...')
+        total_topic_probs_by_date = get_topic_total_probability_by_date(nyt_data, lda_model, number_of_topics)
+        significant_topics = find_significant_topics(total_topic_probs_by_date, iem_prices, number_of_topics, nyt_data)
+        print_topics(significant_topics, lda_model, nyt_data)
+        print('Significant Topics Determined\n')
+
+        print('Determining Significant Words....')
+        positive_words, negative_words = get_pos_neg_words(iem_prices, nyt_data, significant_topics, lda_model)
+        print('Best Gore words: ')
+        print_words(positive_words, nyt_data)
+        print('Best Bush words: ')
+        print_words(negative_words, nyt_data)
+        print('Significant Words Determined\n')
+
+        print('Determining New Priors...')
+        prior = determine_new_priors(positive_words, negative_words, nyt_data)
+        print('New Priors Determined')
 
     return
 
@@ -84,17 +91,6 @@ def find_significant_topics(total_topic_probs_by_date, iem_prices, number_of_top
     return significant_topics
 
 
-def granger_significance_test(comparison_array):
-    max_lag = 7
-    smallest_pvalue = 1
-    results_dict = grangercausalitytests(comparison_array, max_lag, verbose=False)
-    for number_of_lags in results_dict.keys():
-        this_pvalue = results_dict[number_of_lags][0]['ssr_ftest'][1]
-        if this_pvalue < smallest_pvalue:
-            smallest_pvalue = this_pvalue
-    return smallest_pvalue
-
-
 def get_pos_neg_words(iem_prices, nyt_data, significant_topics, lda_model):
     positive_words = []
     negative_words = []
@@ -105,7 +101,7 @@ def get_pos_neg_words(iem_prices, nyt_data, significant_topics, lda_model):
     comparison_array[:, 0] = price_list
 
     for significant_topic in significant_topics:
-        top_words_in_topic = lda_model.get_topic_terms(significant_topic, 20)
+        top_words_in_topic = lda_model.get_topic_terms(significant_topic, 50)
         for top_word_tuple in top_words_in_topic:
             word_id = top_word_tuple[0]
             comparison_array[:, 1] = nyt_data.word_count_by_date[:, word_id]
@@ -123,6 +119,34 @@ def get_pos_neg_words(iem_prices, nyt_data, significant_topics, lda_model):
     negative_words.sort(key=lambda tup: tup[2], reverse=False)
 
     return positive_words, negative_words
+
+
+def granger_significance_test(comparison_array):
+    max_lag = 7
+    smallest_p_value = 1
+    results_dict = grangercausalitytests(comparison_array, max_lag, verbose=False)
+    for number_of_lags in results_dict.keys():
+        this_p_value = results_dict[number_of_lags][0]['ssr_ftest'][1]
+        if this_p_value < smallest_p_value:
+            smallest_p_value = this_p_value
+    return smallest_p_value
+
+
+def determine_new_priors(positive_words, negative_words, nyt_data):
+    new_priors = np.zeros((nyt_data.vocabulary_size))
+    for positive_tuple in positive_words:
+        word_id = positive_tuple[0]
+        p_value = positive_tuple[1]
+        word_prior = (1 - p_value) - .95
+        new_priors[word_id] = word_prior
+    for negative_tuple in negative_words:
+        word_id = negative_tuple[0]
+        p_value = negative_tuple[1]
+        word_prior = (1 - p_value) - .95
+        new_priors[word_id] = word_prior
+    total_prior = np.sum(new_priors)
+    new_priors = new_priors / total_prior
+    return new_priors
 
 
 def print_topics(topics, lda_model, nyt_data):
