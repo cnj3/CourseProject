@@ -35,7 +35,7 @@ def read_data():
     return nyt_data, iem_prices
 
 
-# runs LDA algorithm with nyt_data and runs methods to determine the significant topics
+# runs ITMTF algorithm with nyt_data and runs methods to determine the significant topics
 def run_itmtf(nyt_data, iem_prices, number_of_topics):
     prior = 0
     avg_confidence_vals = []
@@ -134,7 +134,8 @@ def granger_significance_test(comparison_array):
 
 
 # gets the positive and negative words - 
-# states whether the word is a significant word or not
+# states whether the word has a positive correlation with the IEM prices
+# or has a negative correlation with the IEM prices
 def get_pos_neg_words(iem_prices, nyt_data, significant_topics, lda_model):
     positive_words = []
     negative_words = []
@@ -178,7 +179,7 @@ def get_pos_neg_words(iem_prices, nyt_data, significant_topics, lda_model):
 
     return positive_words, negative_words
 
-
+# creates a weight for each word to be used next time LDA is run
 def determine_new_priors(positive_words, negative_words, nyt_data):
     new_priors = np.zeros((nyt_data.vocabulary_size))
     for positive_tuple in positive_words:
@@ -195,7 +196,7 @@ def determine_new_priors(positive_words, negative_words, nyt_data):
     new_priors = new_priors / total_prior
     return new_priors
 
-
+# gets the average confidence amongst all of the words that have been chosen to be significant
 def get_avg_confidence(positive_words, negative_words):
     total_significant_words = len(positive_words) + len(negative_words)
     total_confidence = 0
@@ -210,7 +211,7 @@ def get_avg_confidence(positive_words, negative_words):
     avg_confidence = total_confidence / total_significant_words
     return avg_confidence
 
-
+# gets the average purity amongst all of the topics
 def get_avg_purity(positive_words, negative_words, significant_topics, lda_model):
     number_of_significant_topics = len(significant_topics)
     if number_of_significant_topics == 0:
