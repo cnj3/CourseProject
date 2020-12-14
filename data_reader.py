@@ -52,7 +52,6 @@ class NYTData(object):
         # print(self.vocabulary_size)
         # print(len(self.word_count_by_date[0]))
 
-
     def read_data_file(self):
         with open('data/articles.txt') as iem_txt:
             index = 0

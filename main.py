@@ -1,6 +1,7 @@
 import data_reader
 import gensim
 from gensim import models
+import math
 import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
 from scipy.stats import pearsonr
@@ -11,9 +12,19 @@ def main():
     nyt_data, iem_prices = read_data()
     print('Data Finished being Read\n')
 
-    print('Running ICTM...\n')
-    run_ictm(nyt_data, iem_prices, 10)
-    print('ICTM Finished')
+    results = {}
+    for number_of_topics in [10, 20, 30, 40]:
+        print('\n****************************************************************************************\n')
+        print('Running ITMTF for ' + str(number_of_topics) + ' topics...\n')
+        avg_confidence_vals, avg_purity_vals = run_itmtf(nyt_data, iem_prices, number_of_topics)
+        print('ITMTF Finished\n')
+
+        results[number_of_topics] = {}
+        results[number_of_topics]['confidence'] = avg_confidence_vals
+        results[number_of_topics]['purity'] = avg_purity_vals
+
+    print_results(results)
+
 
 # reads in data from articles.txt and IEMPrices.txt
 def read_data():
@@ -23,9 +34,12 @@ def read_data():
     print("Vocabulary Size: " + str(nyt_data.vocabulary_size))
     return nyt_data, iem_prices
 
+
 # runs LDA algorithm with nyt_data and runs methods to determine the significant topics
-def run_ictm(nyt_data, iem_prices, number_of_topics):
+def run_itmtf(nyt_data, iem_prices, number_of_topics):
     prior = 0
+    avg_confidence_vals = []
+    avg_purity_vals = []
 
     for iteration_count in range(5):
         print('\n*********************************************\n')
@@ -61,9 +75,14 @@ def run_ictm(nyt_data, iem_prices, number_of_topics):
         # calculate new priors
         print('Determining New Priors...')
         prior = determine_new_priors(positive_words, negative_words, nyt_data)
-        print('New Priors Determined')
+        print('New Priors Determined\n')
 
-    return
+        avg_confidence = get_avg_confidence(positive_words, negative_words)
+        avg_confidence_vals.append(avg_confidence)
+        avg_purity = get_avg_purity(positive_words, negative_words, significant_topics, lda_model)
+        avg_purity_vals.append(avg_purity)
+
+    return avg_confidence_vals, avg_purity_vals
 
 
 # finds the probability of topics by date and creates a multidimensional array 
@@ -177,6 +196,59 @@ def determine_new_priors(positive_words, negative_words, nyt_data):
     return new_priors
 
 
+def get_avg_confidence(positive_words, negative_words):
+    total_significant_words = len(positive_words) + len(negative_words)
+    total_confidence = 0
+    for positive_tuple in positive_words:
+        p_value = positive_tuple[1]
+        confidence = (1 - p_value) * 100
+        total_confidence += confidence
+    for negative_tuple in negative_words:
+        p_value = negative_tuple[1]
+        confidence = (1 - p_value) * 100
+        total_confidence += confidence
+    avg_confidence = total_confidence / total_significant_words
+    return avg_confidence
+
+
+def get_avg_purity(positive_words, negative_words, significant_topics, lda_model):
+    number_of_significant_topics = len(significant_topics)
+    if number_of_significant_topics == 0:
+        return 0
+
+    positive_word_list = [word_tuple[0] for word_tuple in positive_words]
+    negative_word_list = [word_tuple[0] for word_tuple in negative_words]
+
+    total_purity = 0
+    for significant_topic in significant_topics:
+        positive_word_count = 0
+        negative_word_count = 0
+        for word_tuple in lda_model.get_topic_terms(significant_topic, 50):
+            word = word_tuple[0]
+            if word in positive_word_list:
+                positive_word_count += 1
+            elif word in negative_word_list:
+                negative_word_count += 1
+        total_word_count = positive_word_count + negative_word_count
+        positive_probability = len(positive_words) / total_word_count
+        negative_probability = len(negative_words) / total_word_count
+
+        if positive_probability == 0:
+            positive_entropy = 0
+        else:
+            positive_entropy = positive_probability * math.log(positive_probability)
+        if negative_probability == 0:
+            negative_entropy = 0
+        else:
+            negative_entropy = negative_probability * math.log(negative_probability)
+        entropy = negative_entropy + positive_entropy
+        purity = 100 + (100 * entropy)
+        total_purity += purity
+
+    avg_purity = total_purity / number_of_significant_topics
+    return avg_purity
+
+
 # prints out the topics
 # iterates through the list of topics and gets the topic terms
 # then iterates through those and prints the most significant words based on the topic
@@ -198,6 +270,15 @@ def print_words(word_tuples, nyt_data):
         word = nyt_data.document_dct[word_id]
         words.append(word)
     print(words)
+
+
+def print_results(results):
+    print('\n*********************************************\n')
+    for number_of_topics in results.keys():
+        avg_confidence_vals = results[number_of_topics]['confidence']
+        avg_purity_vals = results[number_of_topics]['purity']
+        print('Average Confidence Values with topics=' + str(number_of_topics) + ': ' + str(avg_confidence_vals))
+        print('Average Purity Values with topics=' + str(number_of_topics) + ': ' + str(avg_purity_vals))
 
 
 if __name__ == '__main__':
