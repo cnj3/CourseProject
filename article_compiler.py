@@ -1,6 +1,3 @@
-#pip install bs4
-#pip install lmxml
-
 import os                                                                                                                                                                                                             
 from bs4 import BeautifulSoup 
 from io import open
